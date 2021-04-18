@@ -373,6 +373,76 @@ if ($http_accept ~* "webp"){
 # ------------------- (WebP Express rules ends here)
 ```
 
+
+case of vestacp (nginx proxy over apache) first edit the domain nginx file by removing the jpg, jpeg, and png extensions from the root
+
+
+```
+location / {
+        proxy_pass      https://200.2.2.8:8443; # YOUR SERVER IP
+        location ~* ^.+\.(**delete extensions from here**|gif|bmp|ico|svg|tif|tiff|css|js|htm|html|ttf|otf|woff|txt)$ {
+            root           /home/admin/web/domain.com/public_html;
+            access_log     /var/log/httpd/domains/domain.com.log combined;
+            access_log     /var/log/httpd/domains/domain.com.bytes bytes;
+            expires        max;
+            try_files      $uri @fallback;
+        }
+    }
+```
+
+I recommend creating a Vesta template so that when updated this is not overwritten and re-adjusted with jpg,jpeg,png extensions.
+
+once this change is made so that the actions take effect, we will create a file of the type 
+
+**snginx.everything.conf.WebP_Express**
+
+within the same folder where your domain configuration nginx file is located
+
+and let's paste the following code
+
+
+```
+# WebP Express rules
+# --------------------
+location ~* ^/?wp-content/.*\.(png|jpe?g)$ {
+  add_header Vary Accept;
+  expires 365d;
+  if ($http_accept !~* "webp"){
+    root /home/admin/web/domain.com/public_html;
+    break;
+  }
+ try_files
+    $uri.webp
+    /wp-content/plugins/webp-express/wod/webp-on-demand.php?xsource=x$request_filename&wp-content=wp-content
+    @fallback
+    ;
+}
+
+# Route requests for non-existing webps to the converter
+location ~* ^/?wp-content/.*\.(png|jpe?g)\.webp$ {
+    try_files
+      $uri
+      /wp-content/plugins/webp-express/wod/webp-realizer.php?xdestination=x$request_filename&wp-content=wp-content
+      ;
+}
+# Optionally specify browser cache expiry
+    expires 365d;
+    add_header Cache-Control "public, must-revalidate";
+    add_header Access-Control-Allow-Origin *;
+
+# ------------------- (WebP Express rules ends here)
+```
+
+by the way @fallback is a location that make a proxy_pass.
+
+```
+location @fallback {
+        proxy_pass      https://200.20.200.00:8443; #YOUR SERVER IP
+    }
+```
+
+well we just to save it, test (nginx -t), and reload nginx (nginx -s reload)
+
 Discussion on this topic [here](https://wordpress.org/support/topic/nginx-rewrite-rules-4/)
 And here: https://github.com/rosell-dk/webp-express/issues/166
 
